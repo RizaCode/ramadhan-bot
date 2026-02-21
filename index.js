@@ -1,47 +1,55 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
+const cron = require("node-cron");
+const fs = require("fs");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-
 console.log("✅ Ramadhan Companion Bot aktif!");
 
-// ================= DATA =================
-const userLocations = {};
+// ================= DATABASE (JSON) =================
+const DB_FILE = "./users.json";
+let users = fs.existsSync(DB_FILE)
+  ? JSON.parse(fs.readFileSync(DB_FILE))
+  : {};
 
-// Doa random
+const saveDB = () => {
+  fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+};
+
+// ================= RANDOM DATA =================
 const doaHarian = [
-  "🤲 Ya Allah, terimalah amal ibadah kami hari ini.",
-  "🤲 Ya Allah, kuatkan iman dan istiqomahkan kami.",
-  "🤲 Ya Allah, ampunilah dosa-dosa kami dan orang tua kami.",
-  "🤲 Ya Allah, berkahi Ramadhan kami dengan kebaikan."
+  "🤲 Ya Allah, terimalah amal ibadah kami.",
+  "🤲 Ya Allah, kuatkan iman kami.",
+  "🤲 Ya Allah, berkahi Ramadhan kami."
 ];
 
-// Motivasi random
 const motivasiRamadhan = [
-  "🌙 Ramadhan bukan tentang sempurna, tapi istiqomah.",
-  "✨ Sedikit tapi rutin lebih dicintai Allah.",
-  "💖 Jangan lelah berbuat baik, Allah melihat.",
-  "🕌 Jadikan Ramadhan titik balik hidupmu."
+  "🌙 Ramadhan adalah waktu memperbaiki diri.",
+  "✨ Istiqomah lebih baik dari sempurna.",
+  "🕌 Allah melihat usaha kecilmu."
 ];
 
 // ================= START =================
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
-    `🌙 *Ramadhan Companion Bot 🇮🇩*
+    `🌙 Ramadhan Companion Bot 🇮🇩
 
 Assalamu’alaikum 🤍  
 Aku siap menemani ibadahmu selama Ramadhan.
 
-📌 *Command:*
+📌 Command:
 /doa - Doa harian random  
 /motivasi - Motivasi Ramadhan  
 /setkota - Set lokasi otomatis  
 /sholat - Jadwal sholat hari ini
+/reminderon - Nyalakan reminder sahur, imsak & buka
+/reminderoff - Matikan reminder sahur, imsak & buka 
 
-Semoga bermanfaat ✨`,
-    { parse_mode: "Markdown" }
+⏰ Reminder: sahur, imsak & buka otomatis`,
+
+{ parse_mode: "Markdown" }
   );
 });
 
@@ -49,7 +57,7 @@ Semoga bermanfaat ✨`,
 bot.onText(/\/setkota/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
-    "📍 Silakan kirim lokasi kamu.\nTekan 📎 → Location → Send current location"
+    "📍 Kirim lokasi kamu\n📎 → Location → Send current location"
   );
 });
 
@@ -60,20 +68,10 @@ bot.on("location", async (msg) => {
   const lon = msg.location.longitude;
 
   try {
-    // Reverse geocoding (nama lokasi)
-    const geo = await axios.get(
-      "https://nominatim.openstreetmap.org/reverse",
-      {
-        params: {
-          lat,
-          lon,
-          format: "json"
-        },
-        headers: {
-          "User-Agent": "ramadhan-bot"
-        }
-      }
-    );
+    const geo = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+      params: { lat, lon, format: "json" },
+      headers: { "User-Agent": "ramadhan-bot" }
+    });
 
     const city =
       geo.data.address.city ||
@@ -81,66 +79,131 @@ bot.on("location", async (msg) => {
       geo.data.address.village ||
       "Lokasi kamu";
 
-    userLocations[chatId] = { lat, lon, city };
+    users[chatId] = {
+      lat,
+      lon,
+      city,
+      reminder: true,
+      lastSent: {}
+    };
 
-    bot.sendMessage(chatId, `✅ Kota berhasil diset otomatis!\n📍 *${city}*`, {
+    saveDB();
+
+    bot.sendMessage(chatId, `✅ Lokasi diset: *${city}*`, {
       parse_mode: "Markdown"
     });
-  } catch (err) {
+  } catch {
     bot.sendMessage(chatId, "❌ Gagal membaca lokasi.");
   }
 });
 
 // ================= SHOLAT =================
 bot.onText(/\/sholat/, async (msg) => {
-  const chatId = msg.chat.id;
+  const user = users[msg.chat.id];
+  if (!user) return bot.sendMessage(msg.chat.id, "📍 Set lokasi dulu");
 
-  if (!userLocations[chatId]) {
-    return bot.sendMessage(chatId, "📍 Silakan set lokasi dulu dengan /setkota");
-  }
+  const res = await axios.get("https://api.aladhan.com/v1/timings", {
+    params: { latitude: user.lat, longitude: user.lon, method: 20 }
+  });
 
-  const { lat, lon, city } = userLocations[chatId];
+  const t = res.data.data.timings;
 
-  try {
-    const res = await axios.get("https://api.aladhan.com/v1/timings", {
-      params: {
-        latitude: lat,
-        longitude: lon,
-        method: 20 // Kemenag Indonesia
+  bot.sendMessage(
+    msg.chat.id,
+    `🕌 *Jadwal Sholat*
+📍 ${user.city}
+
+Subuh: ${t.Fajr}
+Dzuhur: ${t.Dhuhr}
+Ashar: ${t.Asr}
+Maghrib: ${t.Maghrib}
+Isya: ${t.Isha}`,
+    { parse_mode: "Markdown" }
+  );
+});
+
+// ================= DOA & MOTIVASI =================
+bot.onText(/\/doa/, (msg) =>
+  bot.sendMessage(
+    msg.chat.id,
+    doaHarian[Math.floor(Math.random() * doaHarian.length)]
+  )
+);
+
+bot.onText(/\/motivasi/, (msg) =>
+  bot.sendMessage(
+    msg.chat.id,
+    motivasiRamadhan[Math.floor(Math.random() * motivasiRamadhan.length)]
+  )
+);
+
+// ================= REMINDER TOGGLE =================
+bot.onText(/\/reminderon/, (msg) => {
+  if (!users[msg.chat.id]) return;
+  users[msg.chat.id].reminder = true;
+  saveDB();
+  bot.sendMessage(msg.chat.id, "✅ Reminder diaktifkan");
+});
+
+bot.onText(/\/reminderoff/, (msg) => {
+  if (!users[msg.chat.id]) return;
+  users[msg.chat.id].reminder = false;
+  saveDB();
+  bot.sendMessage(msg.chat.id, "⛔ Reminder dimatikan");
+});
+
+// ================= CRON =================
+cron.schedule("* * * * *", async () => {
+  const now = new Date();
+  const timeNow = now.toTimeString().slice(0, 5);
+
+  for (const chatId in users) {
+    const u = users[chatId];
+    if (!u.reminder) continue;
+
+    try {
+      const res = await axios.get("https://api.aladhan.com/v1/timings", {
+        params: { latitude: u.lat, longitude: u.lon, method: 20 }
+      });
+
+      const t = res.data.data.timings;
+
+      const toMin = (t) => {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      };
+
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      const subuh = toMin(t.Fajr);
+
+      // IMASK (10 menit sebelum subuh)
+      if (nowMin === subuh - 10 && !u.lastSent.imsak) {
+        bot.sendMessage(chatId, "🛑 *Imsak*\n10 menit lagi Subuh", {
+          parse_mode: "Markdown"
+        });
+        u.lastSent.imsak = true;
       }
-    });
 
-    const t = res.data.data.timings;
+      // SAHUR (45 menit sebelum subuh)
+      if (nowMin === subuh - 45 && !u.lastSent.sahur) {
+        bot.sendMessage(chatId, "🌙 *Waktu Sahur*\nJangan lupa niat 🤍", {
+          parse_mode: "Markdown"
+        });
+        u.lastSent.sahur = true;
+      }
 
-    const text = `
-🕌 *Jadwal Sholat Hari Ini*
-📍 *${city}*
+      // BUKA
+      if (timeNow === t.Maghrib && !u.lastSent.buka) {
+        bot.sendMessage(chatId, "🍽️ *Waktunya Berbuka*\nAllahumma laka shumtu", {
+          parse_mode: "Markdown"
+        });
+        u.lastSent.buka = true;
+      }
 
-Subuh   : ${t.Fajr}
-Dzuhur  : ${t.Dhuhr}
-Ashar   : ${t.Asr}
-Maghrib : ${t.Maghrib}
-Isya    : ${t.Isha}
-
-🤍 Semoga ibadahmu lancar
-`;
-
-    bot.sendMessage(chatId, text, { parse_mode: "Markdown" });
-  } catch (err) {
-    console.error(err.message);
-    bot.sendMessage(chatId, "❌ Gagal mengambil jadwal sholat.");
+      saveDB();
+    } catch (err) {
+      console.log("Cron error:", err.message);
+    }
   }
-});
-
-// ================= DOA =================
-bot.onText(/\/doa/, (msg) => {
-  const random = doaHarian[Math.floor(Math.random() * doaHarian.length)];
-  bot.sendMessage(msg.chat.id, random);
-});
-
-// ================= MOTIVASI =================
-bot.onText(/\/motivasi/, (msg) => {
-  const random =
-    motivasiRamadhan[Math.floor(Math.random() * motivasiRamadhan.length)];
-  bot.sendMessage(msg.chat.id, random);
 });
