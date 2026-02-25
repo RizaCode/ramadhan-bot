@@ -154,56 +154,49 @@ bot.onText(/\/reminderoff/, (msg) => {
 
 // ================= CRON =================
 cron.schedule("* * * * *", async () => {
-  const now = new Date();
-  const timeNow = now.toTimeString().slice(0, 5);
+  const now = getNowJakarta();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const today = now.toISOString().slice(0, 10);
 
   for (const chatId in users) {
     const u = users[chatId];
     if (!u.reminder) continue;
 
-    try {
-      const res = await axios.get("https://api.aladhan.com/v1/timings", {
-        params: { latitude: u.lat, longitude: u.lon, method: 20 }
-      });
-
-      const t = res.data.data.timings;
-
-      const toMin = (t) => {
-        const [h, m] = t.split(":").map(Number);
-        return h * 60 + m;
-      };
-
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-
-      const subuh = toMin(t.Fajr);
-
-      // IMASK (10 menit sebelum subuh)
-      if (nowMin === subuh - 10 && !u.lastSent.imsak) {
-        bot.sendMessage(chatId, "🛑 *Imsak*\n10 menit lagi Subuh", {
-          parse_mode: "Markdown"
-        });
-        u.lastSent.imsak = true;
-      }
-
-      // SAHUR (45 menit sebelum subuh)
-      if (nowMin === subuh - 45 && !u.lastSent.sahur) {
-        bot.sendMessage(chatId, "🌙 *Waktu Sahur*\nJangan lupa niat 🤍", {
-          parse_mode: "Markdown"
-        });
-        u.lastSent.sahur = true;
-      }
-
-      // BUKA
-      if (timeNow === t.Maghrib && !u.lastSent.buka) {
-        bot.sendMessage(chatId, "🍽️ *Waktunya Berbuka*\nAllahumma laka shumtu", {
-          parse_mode: "Markdown"
-        });
-        u.lastSent.buka = true;
-      }
-
-      saveDB();
-    } catch (err) {
-      console.log("Cron error:", err.message);
+    // reset harian
+    if (u.lastDate !== today) {
+      u.lastSent = {};
+      u.lastDate = today;
     }
+
+    const res = await axios.get("https://api.aladhan.com/v1/timings", {
+      params: { latitude: u.lat, longitude: u.lon, method: 20 }
+    });
+
+    const t = res.data.data.timings;
+
+    const toMin = (t) => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const subuh = toMin(t.Fajr);
+    const maghrib = toMin(t.Maghrib);
+
+    if (Math.abs(nowMin - (subuh - 45)) <= 0 && !u.lastSent.sahur) {
+      bot.sendMessage(chatId, "🌙 *Waktu Sahur*\nJangan lupa niat 🤍", { parse_mode: "Markdown" });
+      u.lastSent.sahur = true;
+    }
+
+    if (Math.abs(nowMin - (subuh - 10)) <= 0 && !u.lastSent.imsak) {
+      bot.sendMessage(chatId, "🛑 *Imsak*\n10 menit lagi Subuh", { parse_mode: "Markdown" });
+      u.lastSent.imsak = true;
+    }
+
+    if (Math.abs(nowMin - maghrib) <= 0 && !u.lastSent.buka) {
+      bot.sendMessage(chatId, "🍽️ *Waktunya Berbuka*\nAllahumma laka shumtu", { parse_mode: "Markdown" });
+      u.lastSent.buka = true;
+    }
+
+    saveDB();
   }
 });
