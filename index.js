@@ -152,6 +152,13 @@ bot.onText(/\/reminderoff/, (msg) => {
   bot.sendMessage(msg.chat.id, "⛔ Reminder dimatikan");
 });
 
+// ================= TIMEZONE JAKARTA =================
+function getNowJakarta() {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+  );
+}
+
 // ================= CRON =================
 cron.schedule("* * * * *", async () => {
   const now = getNowJakarta();
