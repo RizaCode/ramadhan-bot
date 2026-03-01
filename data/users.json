@@ -4,6 +4,7 @@
     "lon": 107.016733,
     "city": "Taman Rahayu",
     "reminder": true,
-    "lastSent": {}
+    "lastSent": {},
+    "lastDate": "2026-03-01"
   }
 }
