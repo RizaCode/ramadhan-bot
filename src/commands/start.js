@@ -24,6 +24,9 @@ Aku siap menemani ibadahmu selama Ramadhan.
 /sholat - Jadwal sholat hari ini
 /reminderon - Nyalakan reminder sahur, imsak & buka
 /reminderoff - Matikan reminder sahur, imsak & buka 
+/niat - Niat puasa Ramadhan
+/buka - Doa buka puasa
+/quran <masukkan_nomor_surah> - Bacaan Surah Al-Qur'an
 
 ⏰ Reminder: sahur, imsak & buka otomatis`,
 

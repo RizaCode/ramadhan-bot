@@ -11,6 +11,8 @@ require("./src/commands/location")(bot);
 require("./src/commands/sholat")(bot);
 require("./src/commands/quotes")(bot);
 require("./src/commands/reminder")(bot);
+require("./src/commands/puasa")(bot);
+require("./src/commands/quran")(bot);
 
 // Jalankan Cron Job (Scheduler)
 require("./src/cron/scheduler")(bot);
