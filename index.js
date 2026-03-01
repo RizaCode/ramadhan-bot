@@ -16,7 +16,7 @@ require("./src/commands/quran")(bot);
 // Jalankan Cron Job (Scheduler)
 require("./src/cron/scheduler")(bot);
 
-bot.on("polling_error", (error) => {
-  // Menampilkan pesan error aslinya, bukan {}
-  console.log("Polling Error:", error.message || error);
-});
+// bot.on("polling_error", (error) => {
+//   // Menampilkan pesan error aslinya, bukan {}
+//   console.log("Polling Error:", error.message || error);
+// });
