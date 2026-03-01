@@ -7,4 +7,4 @@ const isRamadhan = () => {
   return month === '9'; 
 };
 
-module.exports = { isRamadhan };o
+module.exports = { isRamadhan };

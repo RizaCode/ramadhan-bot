@@ -7,8 +7,6 @@ module.exports = (bot) => {
       `Mohon maaf, saat ini belum memasuki bulan Ramadhan. Bot akan aktif secara otomatis saat Ramadhan tiba. Sampai jumpa di Ramadhan Tahun Depan, Terima kasih atas pengertiannya 🤍`
     )
   }
-
-
   bot.onText(/\/start/, (msg) => {
   bot.sendMessage(
     msg.chat.id,
