@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const axios = require("axios");
 const { loadDB, saveDB } = require("../utils/db");
+const { isRamadhan } = require("../utils/hijri");
 
 function getNowJakarta() {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
@@ -8,6 +9,7 @@ function getNowJakarta() {
 
 module.exports = (bot) => {
   cron.schedule("* * * * *", async () => {
+    if (!isRamadhan()) return;
     const users = loadDB();
     const now = getNowJakarta();
     const nowMin = now.getHours() * 60 + now.getMinutes();
