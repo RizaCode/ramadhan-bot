@@ -41,7 +41,8 @@ module.exports = (bot) => {
         const maghrib = toMin(t.Maghrib);
 
         if (Math.abs(nowMin - (subuh - 45)) <= 0 && !u.lastSent.sahur) {
-          bot.sendMessage(chatId, "🌙 *Waktu Sahur*\nJangan lupa niat 🤍", { parse_mode: "Markdown" });
+          const pesanSahur = `🌙 *Waktu Sahur*\n\nJangan lupa membaca niat puasa:\n\nنَوَيْتُ صَوْمَ غَدٍ عَنْ أَدَاءِ فَرْضِ شَهْرِ رَمَضَانَ هَذِهِ السَّنَةِ لِلّٰهِ تَعَالَى\n\n*Nawaitu shauma ghadin 'an adaa'i fardhi syahri Ramadhaana haadzihis sanati lillaahi ta'aalaa.*\n\nArtinya:\n"Aku berniat puasa esok hari untuk menunaikan fardhu di bulan Ramadhan tahun ini, karena Allah Ta'ala."`;
+          bot.sendMessage(chatId, pesanSahur, { parse_mode: "Markdown" });
           u.lastSent.sahur = true;
           dbChanged = true;
         }
@@ -53,10 +54,12 @@ module.exports = (bot) => {
         }
 
         if (Math.abs(nowMin - maghrib) <= 0 && !u.lastSent.buka) {
-          bot.sendMessage(chatId, "🍽️ *Waktunya Berbuka*\nAllahumma laka shumtu", { parse_mode: "Markdown" });
+          const pesanBuka = `🍽️ *Waktunya Berbuka*\n\nSelamat berbuka puasa! Jangan lupa berdoa:\n\nذَهَبَ الظَّمَأُ وَابْتَلَّتِ الْعُرُوقُ، وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللهُ\n\n*Dzahabaz zhama'u wabtallatil 'uruuqu wa tsabatal ajru, insyaa Allah.*\n\nArtinya:\n"Telah hilang rasa haus, dan urat-urat telah basah serta pahala telah ditetapkan, insya Allah."`;
+          bot.sendMessage(chatId, pesanBuka, { parse_mode: "Markdown" });
           u.lastSent.buka = true;
           dbChanged = true;
         }
+        
       } catch (error) {
         console.error(`Gagal ambil cron API untuk ${chatId}`);
       }
